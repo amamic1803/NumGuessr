@@ -13,11 +13,58 @@ def resource_path(relative_path):
 		base_path = os.path.abspath(".")
 	return os.path.join(base_path, relative_path)
 
+def check_guess(guess, correct):
+	correct_digits = 0
+	correct_places = 0
+	for i, j in zip(guess, correct):
+		if i == j:
+			correct_places += 1
+	victory = True if len(correct) == correct_places else False
+	while len(guess) > 0:
+		if guess[0] in correct:
+			correct_digits += 1
+			correct.pop(correct.index(guess[0]))
+		guess.pop(0)
+
+	return correct_digits, correct_places, victory
+
 def key_press(event):
-	global key_pressed
-	if not key_pressed:
+	global gameOver, key_pressed, digits_on_canvas, digits_correct, digits_input, digits_canvas, tries_num, correct_digits_num, correct_places_num, end_status
+	if not key_pressed and not gameOver:
 		key_pressed = True
-		# event.char
+		try:
+			indeks = digits_input.index(None)
+		except ValueError:
+			indeks = len(digits_input)
+
+		match event.keysym:
+			case "BackSpace":
+				if indeks != 0:
+					digits_input[indeks - 1] = None
+					end_status.config(text="")
+			case "Delete":
+				digits_input = [None for _ in range(len(digits_correct))]
+				end_status.config(text="")
+			case "Return":
+				if indeks == len(digits_input):
+					result = check_guess(digits_input.copy(), digits_correct.copy())
+					correct_digits_num.config(text=str(result[0]))
+					correct_places_num.config(text=str(result[1]))
+					tries_num.config(text=str(int(tries_num["text"]) + 1))
+					if result[2]:
+						end_status.config(text="Success!", foreground="green", activeforeground="green")
+						gameOver = True
+					else:
+						end_status.config(text="Wrong!", foreground="red", activeforeground="red")
+			case _:
+				try:
+					digits_input[indeks] = int(event.keysym)
+					end_status.config(text="")
+				except (IndexError, ValueError):
+					pass
+
+		for digit, tekst in zip(digits_on_canvas, digits_input):
+			digits_canvas.itemconfig(digit, text=str(tekst) if tekst is not None else "*")
 
 def key_release(event):
 	global key_pressed
@@ -47,7 +94,12 @@ def click_restart(event):
 	new_game(None, selected_gamemode)
 
 def new_game(event, difficulty):
-	global digits_canvas, digits
+	global gameOver, digits_canvas, digits_on_canvas, digits_correct, digits_input, end_status, correct_digits_num, correct_places_num, tries_num
+	end_status.config(text="")
+	correct_digits_num.config(text="0")
+	correct_places_num.config(text="0")
+	tries_num.config(text="0")
+	gameOver = False
 	digits_canvas.delete("all")
 
 	match difficulty:
@@ -74,15 +126,17 @@ def new_game(event, difficulty):
 			start_coord += 15
 			line_or_space = True
 
-	digits = []
+	digits_on_canvas = []
+	digits_correct = number_digits.copy()
+	digits_input = [None for _ in range(num_len)]
 	for i in range(len(digits_coords)):
-		digits.append([None, number_digits[i], digits_canvas.create_text(digits_coords[i], 55, text="*", font=("Helvetica", 40, "bold"), fill="white", activefill="white", anchor="s")])
+		digits_on_canvas.append(digits_canvas.create_text(digits_coords[i], 55, text="*", font=("Helvetica", 40, "bold"), fill="white", activefill="white", anchor="s"))
 
 def gui():
-	global digits_canvas, selected_gamemode
+	global digits_canvas, selected_gamemode, correct_places_num, correct_digits_num, tries_num, end_status
 
 	root = Tk()
-	root.geometry(f'500x330+{root.winfo_screenwidth() // 2 - 250}+{root.winfo_screenheight() // 2 - 165}')
+	root.geometry(f'500x340+{root.winfo_screenwidth() // 2 - 250}+{root.winfo_screenheight() // 2 - 170}')
 	root.resizable(False, False)
 	root.title('NumGuessr')
 	root.iconbitmap(resource_path("icon.ico"))
@@ -166,10 +220,10 @@ def gui():
 	                           anchor="w")
 	correct_digits_num.place(x=200, y=210, width=300, height=30)
 	correct_places_num = Label(text="0", font=("Helvetica", 18, "bold"),
-	                           background="#9ECFC2", activebackground="#9ECFC2",
-	                           foreground="white", activeforeground="white",
-	                           borderwidth=0, highlightthickness=0,
-	                           anchor="w")
+							   background="#9ECFC2", activebackground="#9ECFC2",
+							   foreground="white", activeforeground="white",
+							   borderwidth=0, highlightthickness=0,
+							   anchor="w")
 	correct_places_num.place(x=200, y=240, width=300, height=30)
 	tries_num = Label(text="0", font=("Helvetica", 18, "bold"),
 	                  background="#9ECFC2", activebackground="#9ECFC2",
@@ -180,20 +234,30 @@ def gui():
 
 	end_status = Label(text="", font=("Helvetica", 18, "bold"),
 	                   background="#9ECFC2", activebackground="#9ECFC2",
-	                   foreground="white", activeforeground="white",
+	                   foreground="green", activeforeground="green",
 	                   borderwidth=0, highlightthickness=0,
 	                   anchor=CENTER)
 	end_status.place(y=180, height=90, width=225, x=275)
+
+	controls = Label(text="CONTROLS: | "
+	                      "Numbers = enter digits | "
+	                      "Enter = check entry | "
+	                      "BackSpace = delete last digit | "
+	                      "Delete = delete all digits",
+	                 font=("Helvetica", 7, "italic"), anchor=CENTER,
+	                 background="#9ECFC2", activebackground="#9ECFC2",
+	                 foreground="white", activeforeground="white",
+	                 borderwidth=0, highlightthickness=0)
+	controls.place(x=0, y=323, width=500, height=12)
 
 	new_game(0, selected_gamemode)
 
 	root.mainloop()
 
 def main():
-	global key_pressed, selected_gamemode, digits
+	global key_pressed, selected_gamemode
 	key_pressed = False
 	selected_gamemode = "easy"
-	digits = []
 
 	gui()
 
