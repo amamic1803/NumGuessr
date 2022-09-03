@@ -1,0 +1,1 @@
+pyinstaller "main.py" --upx-dir "__UPX_PATH__" --noconsole --icon "icon.ico" --onefile --add-data "icon.ico;." --add-data "restart-small.png;."--add-data "restart-big.png;." --clean --key "__KEY__" --name "NumGuessr-v1.0.0"
