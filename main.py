@@ -1,11 +1,20 @@
 from tkinter import *
 from random import randint
+import os
+import sys
 
-# resource path funct
+
+def resource_path(relative_path):
+	""" Get absolute path to resource, works for dev and for PyInstaller """
+	try:
+		# PyInstaller creates a temp folder and stores path in _MEIPASS
+		base_path = sys._MEIPASS
+	except AttributeError:
+		base_path = os.path.abspath(".")
+	return os.path.join(base_path, relative_path)
+
 def key_press(event):
 	global key_pressed
-	key_pressed = True
-	
 	if not key_pressed:
 		key_pressed = True
 		# event.char
@@ -22,15 +31,15 @@ def main():
 	root = Tk()
 	root.geometry(f'500x500+{root.winfo_screenwidth() // 2 - 250}+{root.winfo_screenheight() // 2 - 250}')
 	root.resizable(False, False)
-	root.title('') # dopisati ime
-	root.iconbitmap('') # dodati ikonu
-	
+	root.title('NumGuessr')
+	root.iconbitmap(resource_path("icon.ico"))
+
 	root.bind(f"<KeyPress>", lambda event: key_press(event))
 	root.bind(f"<KeyRelease>", lambda event: key_release(event)) 
-	
+
 	title = Label(text="naslov")
 	title.place(x=50, y=50, width=100, height=100)
-	
+
 	root.mainloop()
 
 
