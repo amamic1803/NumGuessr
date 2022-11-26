@@ -139,7 +139,7 @@ def gui():
 	root.geometry(f'500x340+{root.winfo_screenwidth() // 2 - 250}+{root.winfo_screenheight() // 2 - 170}')
 	root.resizable(False, False)
 	root.title('NumGuessr')
-	root.iconbitmap(resource_path("icon.ico"))
+	root.iconbitmap(resource_path("data/num-icon.ico"))
 	root.config(background="#9ECFC2")
 
 	root.bind(f"<KeyPress>", lambda event: key_press(event))
@@ -184,8 +184,8 @@ def gui():
 	                       highlightthickness=0, borderwidth=0)
 	digits_canvas.place(x=0, y=100, height=60, width=500)
 
-	restart_img_small = PhotoImage(file=resource_path("restart-small.png"))
-	restart_img_big = PhotoImage(file=resource_path("restart-big.png"))
+	restart_img_small = PhotoImage(file=resource_path("run-data/restart-small.png"))
+	restart_img_big = PhotoImage(file=resource_path("run-data/restart-big.png"))
 	restart = Label(image=restart_img_small,
 	                background="#9ECFC2", activebackground="#9ECFC2",
 	                borderwidth=0, highlightthickness=0)
