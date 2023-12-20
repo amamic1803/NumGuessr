@@ -1,7 +1,7 @@
-from tkinter import *
-from random import randint
 import os
 import sys
+import tkinter as tk
+from random import randint
 
 
 def resource_path(relative_path):
@@ -13,253 +13,264 @@ def resource_path(relative_path):
 		base_path = os.path.abspath(".")
 	return os.path.join(base_path, relative_path)
 
-def check_guess(guess, correct):
-	correct_digits = 0
-	correct_places = 0
-	for i, j in zip(guess, correct):
-		if i == j:
-			correct_places += 1
-	victory = True if len(correct) == correct_places else False
-	while len(guess) > 0:
-		if guess[0] in correct:
-			correct_digits += 1
-			correct.pop(correct.index(guess[0]))
-		guess.pop(0)
 
-	return correct_digits, correct_places, victory
+class App:
+	def __init__(self):
+		self.game_over = False
+		self.game_mode = "easy"
+		self.digits_input = []
+		self.digits_correct = []
+		self.digits_on_canvas = []
 
-def key_press(event):
-	global gameOver, key_pressed, digits_on_canvas, digits_correct, digits_input, digits_canvas, tries_num, correct_digits_num, correct_places_num, end_status
-	if not key_pressed and not gameOver:
-		key_pressed = True
-		try:
-			indeks = digits_input.index(None)
-		except ValueError:
-			indeks = len(digits_input)
+		self.root = tk.Tk()
+		self.root.geometry(f'500x340'
+		                   f'+{self.root.winfo_screenwidth() // 2 - 250}'
+		                   f'+{self.root.winfo_screenheight() // 2 - 170}')
+		self.root.resizable(False, False)
+		self.root.title('NumGuessr')
+		self.root.iconbitmap(resource_path("resources/num-icon.ico"))
+		self.root.config(background="#9ECFC2")
 
-		match event.keysym:
-			case "BackSpace":
-				if indeks != 0:
-					digits_input[indeks - 1] = None
-					end_status.config(text="")
-			case "Delete":
-				digits_input = [None for _ in range(len(digits_correct))]
-				end_status.config(text="")
-			case "Return":
-				if indeks == len(digits_input):
-					result = check_guess(digits_input.copy(), digits_correct.copy())
-					correct_digits_num.config(text=str(result[0]))
-					correct_places_num.config(text=str(result[1]))
-					tries_num.config(text=str(int(tries_num["text"]) + 1))
-					if result[2]:
-						end_status.config(text="Success!", foreground="green", activeforeground="green")
-						gameOver = True
-					else:
-						end_status.config(text="Wrong!", foreground="red", activeforeground="red")
+		self.title = tk.Label(self.root, text="NumGuessr", font=("Helvetica", 30, "italic", "bold"),
+		                      background="#9ECFC2", activebackground="#9ECFC2",
+		                      foreground="white", activeforeground="white",
+		                      borderwidth=0, highlightthickness=0)
+		self.title.place(x=0, y=0, width=500, height=85)
+
+		self.difficulty_easy = tk.Label(self.root, text="Easy", font=("Helvetica", 18, "bold"), cursor="hand2",
+		                                background="#6E9087", activebackground="#6E9087",
+		                                foreground="white", activeforeground="white",
+		                                highlightcolor="white", highlightbackground="white",
+		                                highlightthickness=5, borderwidth=0)
+		self.difficulty_easy.place(x=65, y=278, width=120, height=40)
+		self.difficulty_easy.bind("<Enter>", lambda event: self.difficulty_easy.config(highlightthickness=5) if self.game_mode != "easy" else None)
+		self.difficulty_easy.bind("<Leave>", lambda event: self.difficulty_easy.config(highlightthickness=2) if self.game_mode != "easy" else None)
+
+		self.difficulty_medium = tk.Label(self.root, text="Medium", font=("Helvetica", 18, "bold"), cursor="hand2",
+		                                  background="#6E9087", activebackground="#6E9087",
+		                                  foreground="white", activeforeground="white",
+		                                  highlightcolor="white", highlightbackground="white",
+		                                  highlightthickness=2, borderwidth=0)
+		self.difficulty_medium.place(x=190, y=278, width=120, height=40)
+		self.difficulty_medium.bind("<Enter>", lambda event: self.difficulty_medium.config(highlightthickness=5) if self.game_mode != "medium" else None)
+		self.difficulty_medium.bind("<Leave>", lambda event: self.difficulty_medium.config(highlightthickness=2) if self.game_mode != "medium" else None)
+
+		self.difficulty_hard = tk.Label(self.root, text="Hard", font=("Helvetica", 18, "bold"), cursor="hand2",
+		                                background="#6E9087", activebackground="#6E9087",
+		                                foreground="white", activeforeground="white",
+		                                highlightcolor="white", highlightbackground="white",
+		                                highlightthickness=2, borderwidth=0)
+		self.difficulty_hard.place(x=315, y=278, width=120, height=40)
+		self.difficulty_hard.bind("<Enter>", lambda event: self.difficulty_hard.config(highlightthickness=5) if self.game_mode != "hard" else None)
+		self.difficulty_hard.bind("<Leave>", lambda event: self.difficulty_hard.config(highlightthickness=2) if self.game_mode != "hard" else None)
+
+		self.difficulty_easy.bind("<Button-1>", lambda event: self.change_difficulty("easy"))
+		self.difficulty_medium.bind("<Button-1>", lambda event: self.change_difficulty("medium"))
+		self.difficulty_hard.bind("<Button-1>", lambda event: self.change_difficulty("hard"))
+
+		self.digits_canvas = tk.Canvas(self.root, background="#9ECFC2", highlightthickness=0, borderwidth=0)
+		self.digits_canvas.place(x=0, y=100, height=60, width=500)
+
+		self.restart_img_small = tk.PhotoImage(file=resource_path("resources/restart-small.png"))
+		self.restart_img_big = tk.PhotoImage(file=resource_path("resources/restart-big.png"))
+		self.restart = tk.Label(self.root, image=self.restart_img_small, cursor="hand2",
+		                        background="#9ECFC2", activebackground="#9ECFC2",
+		                        borderwidth=0, highlightthickness=0)
+		self.restart.place(x=0, y=0, height=45, width=45)
+		self.restart.bind("<Enter>", lambda event: self.restart.config(image=self.restart_img_big))
+		self.restart.bind("<Leave>", lambda event: self.restart.config(image=self.restart_img_small))
+		self.restart.bind("<ButtonRelease-1>", lambda event: self.new_game())
+
+		self.correct_digits = tk.Label(self.root, text="Correct digits: ", font=("Helvetica", 18, "bold"),
+		                               background="#9ECFC2", activebackground="#9ECFC2",
+		                               foreground="white", activeforeground="white",
+		                               borderwidth=0, highlightthickness=0,
+		                               anchor="e")
+		self.correct_digits.place(x=0, y=210, width=195, height=30)
+
+		self.correct_places = tk.Label(self.root, text="Correct places: ", font=("Helvetica", 18, "bold"),
+		                               background="#9ECFC2", activebackground="#9ECFC2",
+		                               foreground="white", activeforeground="white",
+		                               borderwidth=0, highlightthickness=0,
+		                               anchor="e")
+		self.correct_places.place(x=0, y=240, width=195, height=30)
+
+		self.tries = tk.Label(self.root, text="Tries: ", font=("Helvetica", 18, "bold"),
+		                      background="#9ECFC2", activebackground="#9ECFC2",
+		                      foreground="white", activeforeground="white",
+		                      borderwidth=0, highlightthickness=0,
+		                      anchor="e")
+		self.tries.place(x=0, y=180, width=195, height=30)
+
+		self.correct_digits_num = tk.Label(self.root, text="0", font=("Helvetica", 18, "bold"),
+		                                   background="#9ECFC2", activebackground="#9ECFC2",
+		                                   foreground="white", activeforeground="white",
+		                                   borderwidth=0, highlightthickness=0,
+		                                   anchor="w")
+		self.correct_digits_num.place(x=200, y=210, width=300, height=30)
+
+		self.correct_places_num = tk.Label(self.root, text="0", font=("Helvetica", 18, "bold"),
+		                                   background="#9ECFC2", activebackground="#9ECFC2",
+		                                   foreground="white", activeforeground="white",
+		                                   borderwidth=0, highlightthickness=0,
+		                                   anchor="w")
+		self.correct_places_num.place(x=200, y=240, width=300, height=30)
+
+		self.tries_num = tk.Label(self.root, text="0", font=("Helvetica", 18, "bold"),
+		                          background="#9ECFC2", activebackground="#9ECFC2",
+		                          foreground="white", activeforeground="white",
+		                          borderwidth=0, highlightthickness=0,
+		                          anchor="w")
+		self.tries_num.place(x=200, y=180, width=300, height=30)
+
+		self.end_status = tk.Label(self.root, text="", font=("Helvetica", 18, "bold"),
+		                           background="#9ECFC2", activebackground="#9ECFC2",
+		                           foreground="green", activeforeground="green",
+		                           borderwidth=0, highlightthickness=0,
+		                           anchor=tk.CENTER)
+		self.end_status.place(y=180, height=90, width=225, x=275)
+
+		self.controls = tk.Label(self.root, text="CONTROLS: | "
+		                                         "Numbers = enter digits | "
+		                                         "Enter = check entry | "
+		                                         "BackSpace = delete last digit | "
+		                                         "Delete = delete all digits",
+		                         font=("Helvetica", 7, "italic"), anchor=tk.CENTER,
+		                         background="#9ECFC2", activebackground="#9ECFC2",
+		                         foreground="white", activeforeground="white",
+		                         borderwidth=0, highlightthickness=0)
+		self.controls.place(x=0, y=323, width=500, height=12)
+
+		self.root.bind("<KeyPress>", lambda event: self.key_press(event))
+
+		self.new_game()
+
+		self.root.mainloop()
+
+	def key_press(self, event):
+		if not self.game_over:
+			try:
+				indeks = self.digits_input.index(None)
+			except ValueError:
+				indeks = len(self.digits_input)
+
+			match event.keysym:
+				case "BackSpace":
+					if indeks != 0:
+						self.digits_input[indeks - 1] = None
+						self.end_status.config(text="")
+				case "Delete":
+					self.digits_input = [None for _ in range(len(self.digits_correct))]
+					self.end_status.config(text="")
+				case "Return":
+					if indeks == len(self.digits_input):
+						result = self.check_guess()
+						self.correct_digits_num.config(text=str(result[0]))
+						self.correct_places_num.config(text=str(result[1]))
+						self.tries_num.config(text=str(int(self.tries_num["text"]) + 1))
+						if result[2]:
+							self.end_status.config(text="Success!", foreground="green", activeforeground="green")
+							self.game_over = True
+						else:
+							self.end_status.config(text="Wrong!", foreground="red", activeforeground="red")
+				case _:
+					try:
+						self.digits_input[indeks] = int(event.keysym)
+						self.end_status.config(text="")
+					except (IndexError, ValueError):
+						pass
+
+			for digit, tekst in zip(self.digits_on_canvas, self.digits_input):
+				self.digits_canvas.itemconfig(digit, text=str(tekst) if tekst is not None else "*")
+
+	def new_game(self):
+		self.end_status.config(text="")
+		self.correct_digits_num.config(text="0")
+		self.correct_places_num.config(text="0")
+		self.tries_num.config(text="0")
+
+		self.game_over = False
+		self.digits_canvas.delete("all")
+
+		match self.game_mode:
+			case "easy":
+				num_len = 4
+			case "medium":
+				num_len = 6
+			case "hard":
+				num_len = 8
 			case _:
-				try:
-					digits_input[indeks] = int(event.keysym)
-					end_status.config(text="")
-				except (IndexError, ValueError):
-					pass
+				num_len = 0
 
-		for digit, tekst in zip(digits_on_canvas, digits_input):
-			digits_canvas.itemconfig(digit, text=str(tekst) if tekst is not None else "*")
+		digits_coords = []
 
-def key_release(event):
-	global key_pressed
-	key_pressed = False
+		number = randint(10 ** (num_len - 1), int("".join(map(str, [9 for _ in range(num_len)]))))
+		number_digits = [int(x) for x in str(number)]
+		len_number = len(number_digits)
 
-def hover_difficulty(event, name, widget, thickness):
-	global selected_gamemode
-	if selected_gamemode != name:
-		widget.config(highlightthickness=thickness)
-
-def hover_restart(event, widget, img_ind, images):
-	widget.config(image=images[img_ind])
-
-def click_difficulty(event, clicked_mode, widgets, widget_ind):
-	global selected_gamemode
-	if clicked_mode != selected_gamemode:
-		selected_gamemode = clicked_mode
-		for i in range(len(widgets)):
-			if i == widget_ind:
-				widgets[i].config(highlightthickness=5)
+		start_coord = (500 - (len_number * 35 + (len_number - 1) * 15)) // 2
+		line_or_space = True
+		for i in range(2 * len_number - 1):
+			if line_or_space:
+				self.digits_canvas.create_line(start_coord, 50, start_coord + 35, 50, fill="white", width=4)
+				digits_coords.append(start_coord + 17)
+				line_or_space = False
+				start_coord += 35
 			else:
-				widgets[i].config(highlightthickness=2)
-		new_game(None, selected_gamemode)
+				start_coord += 15
+				line_or_space = True
 
-def click_restart(event):
-	global selected_gamemode
-	new_game(None, selected_gamemode)
+		self.digits_on_canvas = []
+		self.digits_correct = number_digits
+		self.digits_input = [None for _ in range(num_len)]
+		for i in range(len(digits_coords)):
+			self.digits_on_canvas.append(self.digits_canvas.create_text(
+				digits_coords[i], 55, text="*", font=("Helvetica", 40, "bold"),
+				fill="white", activefill="white", anchor="s"
+			))
 
-def new_game(event, difficulty):
-	global gameOver, digits_canvas, digits_on_canvas, digits_correct, digits_input, end_status, correct_digits_num, correct_places_num, tries_num
-	end_status.config(text="")
-	correct_digits_num.config(text="0")
-	correct_places_num.config(text="0")
-	tries_num.config(text="0")
-	gameOver = False
-	digits_canvas.delete("all")
+	def change_difficulty(self, new_difficulty):
+		if new_difficulty != self.game_mode:
+			self.game_mode = new_difficulty
 
-	match difficulty:
-		case "easy":
-			num_len = 4
-		case "medium":
-			num_len = 6
-		case "hard":
-			num_len = 8
+			match self.game_mode:
+				case "easy":
+					self.difficulty_easy.config(highlightthickness=5)
+					self.difficulty_medium.config(highlightthickness=2)
+					self.difficulty_hard.config(highlightthickness=2)
+				case "medium":
+					self.difficulty_easy.config(highlightthickness=2)
+					self.difficulty_medium.config(highlightthickness=5)
+					self.difficulty_hard.config(highlightthickness=2)
+				case "hard":
+					self.difficulty_easy.config(highlightthickness=2)
+					self.difficulty_medium.config(highlightthickness=2)
+					self.difficulty_hard.config(highlightthickness=5)
 
-	digits_coords = []
-	number = randint(10 ** (num_len - 1), int("".join(map(str, [9 for _ in range(num_len)]))))
-	number_digits = [int(x) for x in str(number)]
-	len_number = len(number_digits)
-	start_coord = (500 - (len_number * 35 + (len_number - 1) * 15)) // 2
-	line_or_space = True
-	for i in range(2 * len_number - 1):
-		if line_or_space:
-			digits_canvas.create_line(start_coord, 50, start_coord + 35, 50, fill="white", width=4)
-			digits_coords.append(start_coord + 17)
-			line_or_space = False
-			start_coord += 35
-		else:
-			start_coord += 15
-			line_or_space = True
+			self.new_game()
 
-	digits_on_canvas = []
-	digits_correct = number_digits.copy()
-	digits_input = [None for _ in range(num_len)]
-	for i in range(len(digits_coords)):
-		digits_on_canvas.append(digits_canvas.create_text(digits_coords[i], 55, text="*", font=("Helvetica", 40, "bold"), fill="white", activefill="white", anchor="s"))
+	def check_guess(self):
+		guess = self.digits_input.copy()
+		correct = self.digits_correct.copy()
 
-def gui():
-	global digits_canvas, selected_gamemode, correct_places_num, correct_digits_num, tries_num, end_status
+		correct_digits = 0
+		correct_places = 0
+		for i, j in zip(guess, correct):
+			if i == j:
+				correct_places += 1
 
-	root = Tk()
-	root.geometry(f'500x340+{root.winfo_screenwidth() // 2 - 250}+{root.winfo_screenheight() // 2 - 170}')
-	root.resizable(False, False)
-	root.title('NumGuessr')
-	root.iconbitmap(resource_path("data/num-icon.ico"))
-	root.config(background="#9ECFC2")
+		victory = True if len(correct) == correct_places else False
+		while len(guess) > 0:
+			if guess[0] in correct:
+				correct_digits += 1
+				correct.pop(correct.index(guess[0]))
+			guess.pop(0)
 
-	root.bind(f"<KeyPress>", lambda event: key_press(event))
-	root.bind(f"<KeyRelease>", lambda event: key_release(event))
+		return correct_digits, correct_places, victory
 
-	title = Label(text="NumGuessr", font=("Helvetica", 30, "italic", "bold"),
-	              background="#9ECFC2", activebackground="#9ECFC2",
-	              foreground="white", activeforeground="white",
-	              borderwidth=0, highlightthickness=0)
-	title.place(x=0, y=0, width=500, height=85)
-
-	difficulty_easy = Label(text="Easy", font=("Helvetica", 18, "bold"),
-	                        background="#6E9087", activebackground="#6E9087",
-	                        foreground="white", activeforeground="white",
-	                        highlightthickness=5, highlightcolor="white", highlightbackground="white",
-	                        borderwidth=0)
-	difficulty_easy.place(x=65, y=278, width=120, height=40)
-	difficulty_easy.bind("<Enter>", lambda event: hover_difficulty(event, "easy", difficulty_easy, 5))
-	difficulty_easy.bind("<Leave>", lambda event: hover_difficulty(event, "easy", difficulty_easy, 2))
-	difficulty_medium = Label(text="Medium", font=("Helvetica", 18, "bold"),
-	                          background="#6E9087", activebackground="#6E9087",
-	                          foreground="white", activeforeground="white",
-	                          highlightthickness=2, highlightcolor="white", highlightbackground="white",
-	                          borderwidth=0)
-	difficulty_medium.place(x=190, y=278, width=120, height=40)
-	difficulty_medium.bind("<Enter>", lambda event: hover_difficulty(event, "medium", difficulty_medium, 5))
-	difficulty_medium.bind("<Leave>", lambda event: hover_difficulty(event, "medium", difficulty_medium, 2))
-	difficulty_hard = Label(text="Hard", font=("Helvetica", 18, "bold"),
-	                        background="#6E9087", activebackground="#6E9087",
-	                        foreground="white", activeforeground="white",
-	                        highlightthickness=2, highlightcolor="white", highlightbackground="white",
-	                        borderwidth=0)
-	difficulty_hard.place(x=315, y=278, width=120, height=40)
-	difficulty_hard.bind("<Enter>", lambda event: hover_difficulty(event, "hard", difficulty_hard, 5))
-	difficulty_hard.bind("<Leave>", lambda event: hover_difficulty(event, "hard", difficulty_hard, 2))
-	difficulty_easy.bind("<Button-1>", lambda event: click_difficulty(event, "easy", (difficulty_easy, difficulty_medium, difficulty_hard), 0))
-	difficulty_medium.bind("<Button-1>", lambda event: click_difficulty(event, "medium", (difficulty_easy, difficulty_medium, difficulty_hard), 1))
-	difficulty_hard.bind("<Button-1>", lambda event: click_difficulty(event, "hard", (difficulty_easy, difficulty_medium, difficulty_hard), 2))
-
-	digits_canvas = Canvas(root,
-	                       background="#9ECFC2",
-	                       highlightthickness=0, borderwidth=0)
-	digits_canvas.place(x=0, y=100, height=60, width=500)
-
-	restart_img_small = PhotoImage(file=resource_path("run-data/restart-small.png"))
-	restart_img_big = PhotoImage(file=resource_path("run-data/restart-big.png"))
-	restart = Label(image=restart_img_small,
-	                background="#9ECFC2", activebackground="#9ECFC2",
-	                borderwidth=0, highlightthickness=0)
-	restart.place(x=0, y=0, height=45, width=45)
-	restart.bind("<Enter>", lambda event: hover_restart(event, restart, 1, (restart_img_small, restart_img_big)))
-	restart.bind("<Leave>", lambda event: hover_restart(event, restart, 0, (restart_img_small, restart_img_big)))
-	restart.bind("<Button-1>", lambda event: click_restart(event))
-
-	correct_digits = Label(text="Correct digits: ", font=("Helvetica", 18, "bold"),
-	                       background="#9ECFC2", activebackground="#9ECFC2",
-	                       foreground="white", activeforeground="white",
-	                       borderwidth=0, highlightthickness=0,
-	                       anchor="e")
-	correct_digits.place(x=0, y=210, width=195, height=30)
-	correct_places = Label(text="Correct places: ", font=("Helvetica", 18, "bold"),
-	                       background="#9ECFC2", activebackground="#9ECFC2",
-	                       foreground="white", activeforeground="white",
-	                       borderwidth=0, highlightthickness=0,
-	                       anchor="e")
-	correct_places.place(x=0, y=240, width=195, height=30)
-	tries = Label(text="Tries: ", font=("Helvetica", 18, "bold"),
-	              background="#9ECFC2", activebackground="#9ECFC2",
-	              foreground="white", activeforeground="white",
-	              borderwidth=0, highlightthickness=0,
-	              anchor="e")
-	tries.place(x=0, y=180, width=195, height=30)
-
-	correct_digits_num = Label(text="0", font=("Helvetica", 18, "bold"),
-	                           background="#9ECFC2", activebackground="#9ECFC2",
-	                           foreground="white", activeforeground="white",
-	                           borderwidth=0, highlightthickness=0,
-	                           anchor="w")
-	correct_digits_num.place(x=200, y=210, width=300, height=30)
-	correct_places_num = Label(text="0", font=("Helvetica", 18, "bold"),
-							   background="#9ECFC2", activebackground="#9ECFC2",
-							   foreground="white", activeforeground="white",
-							   borderwidth=0, highlightthickness=0,
-							   anchor="w")
-	correct_places_num.place(x=200, y=240, width=300, height=30)
-	tries_num = Label(text="0", font=("Helvetica", 18, "bold"),
-	                  background="#9ECFC2", activebackground="#9ECFC2",
-	                  foreground="white", activeforeground="white",
-	                  borderwidth=0, highlightthickness=0,
-	                  anchor="w")
-	tries_num.place(x=200, y=180, width=300, height=30)
-
-	end_status = Label(text="", font=("Helvetica", 18, "bold"),
-	                   background="#9ECFC2", activebackground="#9ECFC2",
-	                   foreground="green", activeforeground="green",
-	                   borderwidth=0, highlightthickness=0,
-	                   anchor=CENTER)
-	end_status.place(y=180, height=90, width=225, x=275)
-
-	controls = Label(text="CONTROLS: | "
-	                      "Numbers = enter digits | "
-	                      "Enter = check entry | "
-	                      "BackSpace = delete last digit | "
-	                      "Delete = delete all digits",
-	                 font=("Helvetica", 7, "italic"), anchor=CENTER,
-	                 background="#9ECFC2", activebackground="#9ECFC2",
-	                 foreground="white", activeforeground="white",
-	                 borderwidth=0, highlightthickness=0)
-	controls.place(x=0, y=323, width=500, height=12)
-
-	new_game(0, selected_gamemode)
-
-	root.mainloop()
 
 def main():
-	global key_pressed, selected_gamemode
-	key_pressed = False
-	selected_gamemode = "easy"
-
-	gui()
+	App()
 
 
 if __name__ == '__main__':
